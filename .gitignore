@@ -1,0 +1,66 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+#
+# General
+build/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift PManager
+Package.swift
+Package.resolved
+/.build/
+/Packages/
+*~
+.swiftpm/
+
+# User-specific
+*.xcuserdatad
+*.xcscmblueprint
+*.xcscheme
+*.xcuserstate
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Carthage
+Carthage/Build
+Carthage/Checkouts
+
+# CocoaPods
+Pods/
+Podfile.lock
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output
+fastlane/screenshots
+fastlane/logs
+
+# Realm
+*.realm.lock
+*.realm.management
+*.realm.note
+*.realm
+
+# Other
+*.swp
+*.app
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/project.xcworkspace/
+!*.xcodeproj/xcshareddata/
+
+# It is often a good idea to ignore Package.resolved files in library projects
+# to allow users of the library to resolve their own dependencies.
+# If you are working on an app, you may want to track this file.
+# Package.resolved 

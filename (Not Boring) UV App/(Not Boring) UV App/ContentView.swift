@@ -29,14 +29,14 @@ class UVDataManager {
             .init(uv: 0.0, uvTime: "2025-05-13T00:00:00.000Z"), // 12 AM (Green)
             .init(uv: 0.0, uvTime: "2025-05-13T03:00:00.000Z"), // 3 AM  (Green)
             .init(uv: 0.5, uvTime: "2025-05-13T06:00:00.000Z"), // 6 AM  (Green)
-ca            .init(uv: 5.5, uvTime: "2025-05-13T12:00:00.000Z"), // 12 PM (Orange)
+            .init(uv: 5.5, uvTime: "2025-05-13T12:00:00.000Z"), // 12 PM (Orange)
             .init(uv: 7.5, uvTime: "2025-05-13T13:30:00.000Z"), // 1:30 PM (Orange/Red cusp)
             .init(uv: 8.5, uvTime: "2025-05-13T14:30:00.000Z"), // 2:30 PM (Red)
             .init(uv: 6.0, uvTime: "2025-05-13T16:30:00.000Z"), // 4:30 PM (Orange) - current time in example
             .init(uv: 3.0, uvTime: "2025-05-13T18:30:00.000Z"), // 6:30 PM (Yellow)
             .init(uv: 0.8, uvTime: "2025-05-13T21:00:00.000Z"), // 9 PM  (Green)
             .init(uv: 0.0, uvTime: "2025-05-13T23:59:00.000Z")  // 11:59 PM (Green)
-        ].sorted { (UVDataManager.getFractionalHour(from: $0.uvTime) ?? 0) < (UVDataManager.getFractionalHour(from: $1.uvTime) ?? 0) }
+        ]
     }
 
     // Static helper, as it's used in init for sorting
@@ -55,11 +55,11 @@ ca            .init(uv: 5.5, uvTime: "2025-05-13T12:00:00.000Z"), // 12 PM (Oran
     }
 }
 
-// Data structure for time labels around the dial
+// MARK: - Time Label Structure
 struct TimeLabelInfo: Identifiable {
     let id = UUID()
+    let hour: Double
     let text: String
-    let hour: Double // Hour value (0-23) for positioning
 }
 
 struct ContentView: View {
@@ -67,17 +67,19 @@ struct ContentView: View {
     @State private var temperature = "91°F"
     
     private let dialRadius: CGFloat = 160 // Half of 320 frame
-    private let labelOffsetRadius: CGFloat = 190 // Distance from center to labels
+    private let labelOffsetRadius: CGFloat = 195 // Adjusted for better label positioning
 
+    // Define the 8 time labels
     private let timeLabels: [TimeLabelInfo] = [
-        TimeLabelInfo(text: "12AM", hour: 0),
-        TimeLabelInfo(text: "3AM", hour: 3),
-        TimeLabelInfo(text: "6AM", hour: 6),
-        TimeLabelInfo(text: "9AM", hour: 9),
-        TimeLabelInfo(text: "12PM", hour: 12),
-        TimeLabelInfo(text: "3PM", hour: 15),
-        TimeLabelInfo(text: "6PM", hour: 18),
-        TimeLabelInfo(text: "9PM", hour: 21)
+        TimeLabelInfo(hour: 0, text: "12AM"),
+        TimeLabelInfo(hour: 3, text: "3AM"),
+        TimeLabelInfo(hour: 6, text: "6AM"),
+        TimeLabelInfo(hour: 9, text: "9AM"),
+        TimeLabelInfo(hour: 12, text: "12PM"),
+        TimeLabelInfo(hour: 15, text: "3PM"),
+        TimeLabelInfo(hour: 18, text: "6PM"),
+        TimeLabelInfo(hour: 21, text: "9PM"),
+        TimeLabelInfo(hour: 23.98, text: "11:59PM") // Added 11:59 PM
     ]
 
     private var currentDisplayUV: Int {
@@ -174,6 +176,24 @@ struct ContentView: View {
                        y: -radius * sin(angleRadians)) // Negative Y for SwiftUI top-positive coordinates
     }
 
+    // Calculate position for the new time labels (12AM left, 12PM top, ~12AM right of N-arc)
+    private func timeLabelPosition(forHour hour: Double, radius: CGFloat) -> CGPoint {
+        let angleDegrees: Double
+        if hour <= 12.0 {
+            // From 12 AM (hour 0) at 225 deg (bottom-left) to 12 PM (hour 12) at 90 deg (top)
+            // Rate: (90 - 225) / 12 = -135 / 12 = -11.25 deg/hour
+            angleDegrees = 225.0 - hour * 11.25
+        } else {
+            // From 12 PM (hour 12) at 90 deg (top) to ~12 AM next day (hour 24) at -45 deg (bottom-right)
+            // Rate: (-45 - 90) / 12 = -135 / 12 = -11.25 deg/hour
+            angleDegrees = 90.0 - (hour - 12.0) * 11.25
+        }
+        let angleRadians = angleDegrees * .pi / 180.0
+        
+        return CGPoint(x: radius * cos(angleRadians),
+                       y: -radius * sin(angleRadians)) // Negative Y for SwiftUI top-positive coordinates
+    }
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -206,16 +226,6 @@ struct ContentView: View {
                         .frame(width: dialRadius * 2, height: dialRadius * 2)
                         .rotationEffect(.degrees(90)) // Aligns arc start to bottom-left
 
-                    // Time Labels around the dial
-                    ForEach(timeLabels) { labelInfo in
-                        let pos = position(for: labelInfo.hour, radius: labelOffsetRadius)
-                        Text(labelInfo.text)
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                            .position(x: (dialRadius * 2 / 2) + pos.x, y: (dialRadius * 2 / 2) + pos.y)
-                    }
-                    .frame(width: dialRadius * 2, height: dialRadius * 2) // ForEach positioning context
-
                     // Center UV information (shows CURRENT UV)
                     VStack(spacing: 12) {
                         Text("\(currentDisplayUV)")
@@ -227,8 +237,19 @@ struct ContentView: View {
                                 .font(.system(size: 20)).foregroundColor(.white.opacity(0.7)).padding(.top, 10)
                         }
                     }
+                    
+                    // Add Time Labels around the dial
+                    ForEach(timeLabels) { labelInfo in
+                        Text(labelInfo.text)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.gray)
+                            .position(
+                                x: ((dialRadius * 2 + 50) / 2.0) + timeLabelPosition(forHour: labelInfo.hour, radius: labelOffsetRadius).x,
+                                y: ((dialRadius * 2 + 50) / 2.0) + timeLabelPosition(forHour: labelInfo.hour, radius: labelOffsetRadius).y
+                            )
+                    }
                 }
-                .frame(width: dialRadius * 2, height: dialRadius * 2) // Ensure ZStack has a defined size for .position
+                .frame(width: dialRadius * 2 + 50, height: dialRadius * 2 + 50) // Ensure ZStack has a defined size for .position and can contain labels
                 
                 Spacer()
                 Spacer()
